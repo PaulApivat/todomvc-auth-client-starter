@@ -3,11 +3,11 @@
 import React, { Component } from "react";
 import classNames from "classnames";
 import {
-  ToggleButton,
   ReactiveElement,
   DataController
 } from "@appbaseio/reactivesearch";
 
+import TodoButton from "./todoButton";
 import Utils from "./utils";
 
 const ALL_TODOS = "all";
@@ -35,18 +35,18 @@ class TodoFooter extends Component {
 
   render () {
     let clearButton = null;
+    let { completedCount, onClearCompleted, nowShowing } = this.props;
 
-    if (this.props.completedCount > 0) {
+    if (completedCount > 0) {
       clearButton = (
         <button
           className="clear-completed"
-          onClick={this.props.onClearCompleted}>
+          onClick={onClearCompleted}>
           Clear completed
         </button>
       )
     }
 
-    let nowShowing = this.props.nowShowing;
     return (
       <footer className="footer">
         <DataController
@@ -56,9 +56,7 @@ class TodoFooter extends Component {
           customQuery={
             function(value) {
               return {
-                query: {
-                  match_all: {}
-                }
+                match_all: {}
               }
             }
           }
@@ -73,50 +71,26 @@ class TodoFooter extends Component {
           }}
         />
         <ul className="filters">
-          <ToggleButton
-            componentId="FiltersSensor"
-            dataField="completed"
-            defaultSelected={[nowShowing]}
-            multiSelect={false}
-            customQuery={
-              function(data) {
-                let val;
-                if (Array.isArray(data)) {
-                  val = data[0].value;
-                }
-                const completed = (val === "completed") ? true : (val === "active") ? false : "all";
-
-                if (completed === "all") {
-                  return {
-                    query: {
-                      match_all: {}
-                    }
-                  }
-                }
-
-                return {
-                  "query": {
-                    "bool": {
-                      "must": [
-                        {
-                          "match": {
-                            "completed": completed
-                          }
-                        }
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-            data={
-              [
-                {"label": "all",        "value": "all"},
-                {"label": "active",     "value": "active"},
-                {"label": "completed",  "value": "completed"}
-              ]
-            }
-          />
+          <div className="rbc-buttongroup">
+            <TodoButton
+              label="All"
+              value="all"
+              active={this.props.nowShowing === ALL_TODOS}
+              onClick={this.props.handleToggle}
+            />
+            <TodoButton
+              label="Active"
+              value="active" 
+              active={this.props.nowShowing === ACTIVE_TODOS}
+              onClick={this.props.handleToggle}
+            />
+            <TodoButton
+              label="Completed"
+              value="completed"
+              active={this.props.nowShowing === COMPLETED_TODOS}
+              onClick={this.props.handleToggle}
+            />
+          </div>
         </ul>
         {clearButton}
       </footer>

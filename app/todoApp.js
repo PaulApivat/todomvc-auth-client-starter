@@ -5,12 +5,11 @@ import {
   ReactiveBase,
   ReactiveList,
   TextField,
-  ToggleButton
+  DataController
 } from "@appbaseio/reactivesearch";
 
 import Utils from "./utils";
-import TodoItem from "./todoItem";
-import TodoFooter from "./todoFooter";
+import TodoList from "./todoList";
 
 import "./todomvc.scss";
 import "./style.scss";
@@ -31,7 +30,7 @@ class TodoApp extends Component {
     }
     this.onAllData = this.onAllData.bind(this);
     this.handleChange = this.handleChange.bind(this);
-    this.clearCompleted = this.clearCompleted.bind(this);
+    this.handleNewTodoKeyDown = this.handleNewTodoKeyDown.bind(this);
   }
 
   handleChange (newTodo) {
@@ -55,22 +54,6 @@ class TodoApp extends Component {
     this.props.model.toggleAll(checked)
   }
 
-  toggle (todoToToggle) {
-    this.props.model.toggle(todoToToggle)
-  }
-
-  destroy (todo) {
-    this.props.model.destroy(todo)
-  }
-
-  save (todoToSave, text) {
-    this.props.model.save(todoToSave, text);
-  }
-
-  clearCompleted () {
-    this.props.model.clearCompleted()
-  }
-
   customQuery(value) {
     return {
       query: {
@@ -80,91 +63,86 @@ class TodoApp extends Component {
   }
 
   onAllData(data) {
-
+    
     // merging all streaming and historic data
-    var todosData = Utils.mergeTodos(data);
+    let todosData = Utils.mergeTodos(data);
 
     // sorting todos based on creation time
     todosData = todosData.sort(function(a, b) {
       return a._source.createdAt - b._source.createdAt;
     });
+    console.log(todosData)
 
-    return todosData.map(({ _source: todo }) => {
-      return (
-        <TodoItem
-          key={todo.id}
-          todo={{...todo}}
-          onToggle={this.toggle.bind(this, todo)}
-          onDestroy={this.destroy.bind(this, todo)}
-          onSave={this.save.bind(this, todo)}
-        />
-      );
-    }, this);
+    return (
+      <TodoList
+        todos={todosData}
+        model={this.props.model}
+      />
+    )
   }
 
   render () {
-    let footer,
-    main,
-    todos = this.props.model.todos;
+    let todos = this.props.model.todos;
+
+    let { nowShowing, newTodo } = this.state;
 
     let activeTodoCount = todos.reduce((accum, todo) => {
       return todo.completed ? accum : accum + 1
     }, 0);
-
-    let completedCount = todos.length - activeTodoCount;
-
-    if (activeTodoCount || completedCount) {
-      footer =
-      <TodoFooter
-        count={activeTodoCount}
-        completedCount={completedCount}
-        nowShowing={this.state.nowShowing}
-        onClearCompleted={this.clearCompleted.bind(this)}
-      />
-    }
 
     return (
       <ReactiveBase
         app="todomvc-auth"
         credentials="pVPf3rRLj:61fd73c0-3660-44db-8309-77d9d35d64cc"
         type="todo_reactjs"
-        >
-          <header className="header">
-            <h1>todos</h1>
-            <TextField
-              componentId="NewTodoSensor"
-              dataField="title"
-              className="new-todo-container"
-              placeholder="What needs to be done?"
-              onKeyDown={this.handleNewTodoKeyDown.bind(this)}
-              onValueChange={this.handleChange.bind(this)}
-              defaultSelected={this.state.newTodo}
-              autoFocus={true}
-            />
-          </header>
+      >
+        <DataController
+          componentId="AllTodosSensor"
+          visible={false}
+          showFilter={false}
+          customQuery={
+            function(value) {
+              return {
+                match_all: {}
+              }
+            }
+          }
+        />
+        <header className="header">
+          <h1>todos</h1>
+          <TextField
+            componentId="NewTodoSensor"
+            dataField="title"
+            className="new-todo-container"
+            placeholder="What needs to be done?"
+            onKeyDown={this.handleNewTodoKeyDown}
+            onValueChange={this.handleChange}
+            defaultSelected={newTodo}
+            autoFocus={true}
+          />
+        </header>
 
-          <section className="main">
-            <input
-              className="toggle-all"
-              type="checkbox"
-              onChange={this.toggleAll.bind(this)}
-              checked={activeTodoCount === 0}
+        <section className="main">
+          <input
+            className="toggle-all"
+            type="checkbox"
+            onChange={this.toggleAll}
+            checked={activeTodoCount === 0}
+          />
+          <ul className="todo-list">
+            <ReactiveList
+              stream={true}
+              react={{
+                or: ["AllTodosSensor"]
+              }}
+              scrollOnTarget={window}
+              showResultStats={false}
+              pagination={false}
+              onAllData={this.onAllData}
             />
-            <ul className="todo-list">
-              <ReactiveList
-                stream={true}
-                react={{
-                  or: ["FiltersSensor"]
-                }}
-                scrollOnTarget={window}
-                showResultStats={false}
-                pagination={false}
-                onAllData={this.onAllData}
-              />
-            </ul>
-          </section>
-          {footer}
-        </ReactiveBase>
+          </ul>
+        </section>
+      </ReactiveBase>
       )
     }
   }
